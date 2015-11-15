@@ -45,10 +45,11 @@ void draw_yolo(image im, int num, float thresh, box *boxes, float **probs)
     }
 }
 
-void train_yolo(char *cfgfile, char *weightfile)
+void train_yolo(char *cfgfile, char *weightfile, const char* model_dir)
 {
     char *train_images = "data/voc.0712.trainval";
-    char *backup_directory = "/home/pjreddie/backup/";
+    //char *backup_directory = "/home/pjreddie/backup/";
+	const char* backup_directory = model_dir;
     srand(time(0));
     data_seed = time(0);
     char *base = basecfg(cfgfile);
@@ -435,16 +436,18 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh){}
 void run_yolo(int argc, char **argv)
 {
     float thresh = find_float_arg(argc, argv, "-thresh", .2);
-    if(argc < 4){
-        fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [weights (optional)]\n", argv[0], argv[1]);
+	fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [model directory (use NONE if not train)] [weights (optional)]\n", argv[0], argv[1]);
+    if(argc < 5){
+        fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [model directory] [weights (optional)]\n", argv[0], argv[1]);
         return;
     }
 
     char *cfg = argv[3];
-    char *weights = (argc > 4) ? argv[4] : 0;
-    char *filename = (argc > 5) ? argv[5]: 0;
+	char* model_dir = argv[4];
+    char *weights = (argc > 5) ? argv[5] : 0;
+    char *filename = (argc > 6) ? argv[6]: 0;
     if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
-    else if(0==strcmp(argv[2], "train")) train_yolo(cfg, weights);
+    else if(0==strcmp(argv[2], "train")) train_yolo(cfg, weights, model_dir);
     else if(0==strcmp(argv[2], "valid")) validate_yolo(cfg, weights);
     else if(0==strcmp(argv[2], "recall")) validate_yolo_recall(cfg, weights);
     else if(0==strcmp(argv[2], "demo")) demo_yolo(cfg, weights, thresh);
