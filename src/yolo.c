@@ -47,9 +47,13 @@ void draw_yolo(image im, int num, float thresh, box *boxes, float **probs)
 
 void train_yolo(char *cfgfile, char *weightfile, const char* model_dir)
 {
-    char *train_images = "data/voc.0712.trainval";
+    //char *train_images = "data/voc.0712.trainval";
     //char *backup_directory = "/home/pjreddie/backup/";
+    char* train_images = "train_images.txt";
 	const char* backup_directory = model_dir;
+	printf("List of Training images: %s\n", train_images);
+	printf("Model Directory: %s\n", backup_directory);
+
     srand(time(0));
     data_seed = time(0);
     char *base = basecfg(cfgfile);
