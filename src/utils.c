@@ -212,7 +212,7 @@ void strip(char *s)
     size_t offset = 0;
     for(i = 0; i < len; ++i){
         char c = s[i];
-        if(c==' '||c=='\t'||c=='\n') ++offset;
+        if(c==' '||c=='\t'||c=='\n'||c=='\r') ++offset;
         else s[i-offset] = c;
     }
     s[len-offset] = '\0';
@@ -409,7 +409,7 @@ float mag_array(float *a, int n)
     int i;
     float sum = 0;
     for(i = 0; i < n; ++i){
-        sum += a[i]*a[i];   
+        sum += a[i]*a[i];
     }
     return sqrt(sum);
 }
