@@ -1,8 +1,14 @@
-GPU=0
-OPENCV=0
+GPU=1
+OPENCV=1
 DEBUG=0
 
-ARCH= --gpu-architecture=compute_20 --gpu-code=compute_20
+#ARCH= --gpu-architecture=compute_20 --gpu-code=compute_20
+ARCH = -gencode arch=compute_20,code=sm_20 \
+       -gencode arch=compute_20,code=sm_21 \
+       -gencode arch=compute_30,code=sm_30 \
+       -gencode arch=compute_35,code=sm_35 \
+       -gencode arch=compute_50,code=sm_50 \
+       -gencode arch=compute_50,code=compute_50
 
 VPATH=./src/
 EXEC=darknet
@@ -31,7 +37,7 @@ endif
 ifeq ($(GPU), 1) 
 COMMON+= -DGPU -I/usr/local/cuda/include/
 CFLAGS+= -DGPU
-LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand
+LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand -lcudnn
 endif
 
 OBJ=gemm.o utils.o cuda.o deconvolutional_layer.o convolutional_layer.o list.o image.o activations.o im2col.o col2im.o blas.o crop_layer.o dropout_layer.o maxpool_layer.o softmax_layer.o data.o matrix.o network.o connected_layer.o cost_layer.o parser.o option_list.o darknet.o detection_layer.o imagenet.o captcha.o route_layer.o writing.o box.o nightmare.o normalization_layer.o avgpool_layer.o coco.o dice.o yolo.o layer.o compare.o classifier.o local_layer.o
