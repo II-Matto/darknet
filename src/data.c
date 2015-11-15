@@ -151,8 +151,9 @@ void correct_boxes(box_label *boxes, int n, float dx, float dy, float sx, float 
 
 void fill_truth_region(char *path, float *truth, int classes, int num_boxes, int flip, float dx, float dy, float sx, float sy)
 {
-    char *labelpath = find_replace(path, "images", "labels");
-    labelpath = find_replace(labelpath, "JPEGImages", "labels");
+    //char *labelpath = find_replace(path, "images", "labels");
+    //labelpath = find_replace(labelpath, "JPEGImages", "labels");
+    char* labelpath = path;
 
     labelpath = find_replace(labelpath, ".jpg", ".txt");
     labelpath = find_replace(labelpath, ".JPG", ".txt");
@@ -459,7 +460,7 @@ data load_data_compare(int n, char **paths, int m, int classes, int w, int h)
         while(fscanf(fp2, "%d %f", &id, &iou) == 2){
             if (d.y.vals[i][2*id + 1] < iou) d.y.vals[i][2*id + 1] = iou;
         }
-        
+
         for (j = 0; j < classes; ++j){
             if (d.y.vals[i][2*j] > .5 &&  d.y.vals[i][2*j+1] < .5){
                 d.y.vals[i][2*j] = 1;
