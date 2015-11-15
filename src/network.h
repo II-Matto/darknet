@@ -15,6 +15,7 @@ typedef struct {
     int n;
     int batch;
     int *seen;
+    float epoch;
     int subdivisions;
     float momentum;
     float decay;
@@ -70,7 +71,7 @@ float train_network_sgd(network net, data d, int n);
 matrix network_predict_data(network net, data test);
 float *network_predict(network net, float *input);
 float network_accuracy(network net, data d);
-float *network_accuracies(network net, data d);
+float *network_accuracies(network net, data d, int n);
 float network_accuracy_multi(network net, data d, int n);
 void top_predictions(network net, int n, int *index);
 float *get_network_output(network net);
@@ -88,7 +89,6 @@ int resize_network(network *net, int w, int h);
 void set_batch_network(network *net, int b);
 int get_network_input_size(network net);
 float get_network_cost(network net);
-detection_layer get_network_detection_layer(network net);
 
 int get_network_nuisance(network net);
 int get_network_background(network net);

@@ -1,5 +1,5 @@
 extern "C" {
-#include "convolutional_layer.h"
+#include "local_layer.h"
 #include "gemm.h"
 #include "blas.h"
 #include "im2col.h"
@@ -96,13 +96,13 @@ void backward_bias_gpu(float *bias_updates, float *delta, int batch, int n, int 
     check_error(cudaPeekAtLastError());
 }
 
-void forward_convolutional_layer_gpu(convolutional_layer l, network_state state)
+void forward_local_layer_gpu(local_layer l, network_state state)
 {
     int i;
     int m = l.n;
     int k = l.size*l.size*l.c;
-    int n = convolutional_out_height(l)*
-        convolutional_out_width(l);
+    int n = local_out_height(l)*
+        local_out_width(l);
 
     fill_ongpu(l.outputs*l.batch, 0, l.output_gpu, 1);
     for(i = 0; i < l.batch; ++i){
@@ -140,13 +140,13 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network_state state)
     activate_array_ongpu(l.output_gpu, m*n*l.batch, l.activation);
 }
 
-void backward_convolutional_layer_gpu(convolutional_layer l, network_state state)
+void backward_local_layer_gpu(local_layer l, network_state state)
 {
     int i;
     int m = l.n;
     int n = l.size*l.size*l.c;
-    int k = convolutional_out_height(l)*
-        convolutional_out_width(l);
+    int k = local_out_height(l)*
+        local_out_width(l);
 
     gradient_array_ongpu(l.output_gpu, m*k*l.batch, l.activation, l.delta_gpu);
 
@@ -182,7 +182,7 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network_state state
     }
 }
 
-void pull_convolutional_layer(convolutional_layer layer)
+void pull_local_layer(local_layer layer)
 {
     cuda_pull_array(layer.filters_gpu, layer.filters, layer.c*layer.n*layer.size*layer.size);
     cuda_pull_array(layer.biases_gpu, layer.biases, layer.n);
@@ -195,7 +195,7 @@ void pull_convolutional_layer(convolutional_layer layer)
     }
 }
 
-void push_convolutional_layer(convolutional_layer layer)
+void push_local_layer(local_layer layer)
 {
     cuda_push_array(layer.filters_gpu, layer.filters, layer.c*layer.n*layer.size*layer.size);
     cuda_push_array(layer.biases_gpu, layer.biases, layer.n);
@@ -208,7 +208,7 @@ void push_convolutional_layer(convolutional_layer layer)
     }
 }
 
-void update_convolutional_layer_gpu(convolutional_layer layer, int batch, float learning_rate, float momentum, float decay)
+void update_local_layer_gpu(local_layer layer, int batch, float learning_rate, float momentum, float decay)
 {
     int size = layer.size*layer.size*layer.c*layer.n;
 

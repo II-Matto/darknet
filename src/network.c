@@ -8,10 +8,10 @@
 
 #include "crop_layer.h"
 #include "connected_layer.h"
+#include "local_layer.h"
 #include "convolutional_layer.h"
 #include "deconvolutional_layer.h"
 #include "detection_layer.h"
-#include "region_layer.h"
 #include "normalization_layer.h"
 #include "maxpool_layer.h"
 #include "avgpool_layer.h"
@@ -60,6 +60,8 @@ char *get_layer_string(LAYER_TYPE a)
     switch(a){
         case CONVOLUTIONAL:
             return "convolutional";
+        case LOCAL:
+            return "local";
         case DECONVOLUTIONAL:
             return "deconvolutional";
         case CONNECTED:
@@ -72,8 +74,6 @@ char *get_layer_string(LAYER_TYPE a)
             return "softmax";
         case DETECTION:
             return "detection";
-        case REGION:
-            return "region";
         case DROPOUT:
             return "dropout";
         case CROP:
@@ -115,12 +115,12 @@ void forward_network(network net, network_state state)
             forward_convolutional_layer(l, state);
         } else if(l.type == DECONVOLUTIONAL){
             forward_deconvolutional_layer(l, state);
+        } else if(l.type == LOCAL){
+            forward_local_layer(l, state);
         } else if(l.type == NORMALIZATION){
             forward_normalization_layer(l, state);
         } else if(l.type == DETECTION){
             forward_detection_layer(l, state);
-        } else if(l.type == REGION){
-            forward_region_layer(l, state);
         } else if(l.type == CONNECTED){
             forward_connected_layer(l, state);
         } else if(l.type == CROP){
@@ -155,6 +155,8 @@ void update_network(network net)
             update_deconvolutional_layer(l, rate, net.momentum, net.decay);
         } else if(l.type == CONNECTED){
             update_connected_layer(l, update_batch, rate, net.momentum, net.decay);
+        } else if(l.type == LOCAL){
+            update_local_layer(l, update_batch, rate, net.momentum, net.decay);
         }
     }
 }
@@ -177,10 +179,6 @@ float get_network_cost(network net)
             ++count;
         }
         if(net.layers[i].type == DETECTION){
-            sum += net.layers[i].cost[0];
-            ++count;
-        }
-        if(net.layers[i].type == REGION){
             sum += net.layers[i].cost[0];
             ++count;
         }
@@ -224,12 +222,12 @@ void backward_network(network net, network_state state)
             backward_dropout_layer(l, state);
         } else if(l.type == DETECTION){
             backward_detection_layer(l, state);
-        } else if(l.type == REGION){
-            backward_region_layer(l, state);
         } else if(l.type == SOFTMAX){
             if(i != 0) backward_softmax_layer(l, state);
         } else if(l.type == CONNECTED){
             backward_connected_layer(l, state);
+        } else if(l.type == LOCAL){
+            backward_local_layer(l, state);
         } else if(l.type == COST){
             backward_cost_layer(l, state);
         } else if(l.type == ROUTE){
@@ -540,12 +538,12 @@ float network_accuracy(network net, data d)
     return acc;
 }
 
-float *network_accuracies(network net, data d)
+float *network_accuracies(network net, data d, int n)
 {
     static float acc[2];
     matrix guess = network_predict_data(net, d);
-    acc[0] = matrix_topk_accuracy(d.y, guess,1);
-    acc[1] = matrix_topk_accuracy(d.y, guess,5);
+    acc[0] = matrix_topk_accuracy(d.y, guess, 1);
+    acc[1] = matrix_topk_accuracy(d.y, guess, n);
     free_matrix(guess);
     return acc;
 }

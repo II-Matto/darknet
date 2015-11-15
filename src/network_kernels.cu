@@ -13,13 +13,13 @@ extern "C" {
 #include "crop_layer.h"
 #include "connected_layer.h"
 #include "detection_layer.h"
-#include "region_layer.h"
 #include "convolutional_layer.h"
 #include "deconvolutional_layer.h"
 #include "maxpool_layer.h"
 #include "avgpool_layer.h"
 #include "normalization_layer.h"
 #include "cost_layer.h"
+#include "local_layer.h"
 #include "softmax_layer.h"
 #include "dropout_layer.h"
 #include "route_layer.h"
@@ -36,16 +36,16 @@ void forward_network_gpu(network net, network_state state)
     for(i = 0; i < net.n; ++i){
         layer l = net.layers[i];
         if(l.delta_gpu){
-            scal_ongpu(l.outputs * l.batch, 0, l.delta_gpu, 1);
+            fill_ongpu(l.outputs * l.batch, 0, l.delta_gpu, 1);
         }
         if(l.type == CONVOLUTIONAL){
             forward_convolutional_layer_gpu(l, state);
         } else if(l.type == DECONVOLUTIONAL){
             forward_deconvolutional_layer_gpu(l, state);
+        } else if(l.type == LOCAL){
+            forward_local_layer_gpu(l, state);
         } else if(l.type == DETECTION){
             forward_detection_layer_gpu(l, state);
-        } else if(l.type == REGION){
-            forward_region_layer_gpu(l, state);
         } else if(l.type == CONNECTED){
             forward_connected_layer_gpu(l, state);
         } else if(l.type == CROP){
@@ -88,6 +88,8 @@ void backward_network_gpu(network net, network_state state)
             backward_convolutional_layer_gpu(l, state);
         } else if(l.type == DECONVOLUTIONAL){
             backward_deconvolutional_layer_gpu(l, state);
+        } else if(l.type == LOCAL){
+            backward_local_layer_gpu(l, state);
         } else if(l.type == MAXPOOL){
             if(i != 0) backward_maxpool_layer_gpu(l, state);
         } else if(l.type == AVGPOOL){
@@ -96,8 +98,6 @@ void backward_network_gpu(network net, network_state state)
             backward_dropout_layer_gpu(l, state);
         } else if(l.type == DETECTION){
             backward_detection_layer_gpu(l, state);
-        } else if(l.type == REGION){
-            backward_region_layer_gpu(l, state);
         } else if(l.type == NORMALIZATION){
             backward_normalization_layer_gpu(l, state);
         } else if(l.type == SOFTMAX){
@@ -125,6 +125,8 @@ void update_network_gpu(network net)
             update_deconvolutional_layer_gpu(l, rate, net.momentum, net.decay);
         } else if(l.type == CONNECTED){
             update_connected_layer_gpu(l, update_batch, rate, net.momentum, net.decay);
+        } else if(l.type == LOCAL){
+            update_local_layer_gpu(l, update_batch, rate, net.momentum, net.decay);
         }
     }
 }
@@ -134,7 +136,7 @@ float train_network_datum_gpu(network net, float *x, float *y)
     network_state state;
     int x_size = get_network_input_size(net)*net.batch;
     int y_size = get_network_output_size(net)*net.batch;
-    if(net.layers[net.n-1].type == REGION) y_size = net.layers[net.n-1].truths*net.batch;
+    if(net.layers[net.n-1].type == DETECTION) y_size = net.layers[net.n-1].truths*net.batch;
     if(!*net.input_gpu){
         *net.input_gpu = cuda_make_array(x, x_size);
         *net.truth_gpu = cuda_make_array(y, y_size);
