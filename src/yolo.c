@@ -414,7 +414,11 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh, ch
 				}
 				if (!fgets(image_name, 1023 - strlen(image_path), image_list_file))
 					break;
-				image_name[strlen(image_name) - 1] = '\0';
+				int name_len = strlen(image_name);
+				if (image_name[name_len - 2] == '\r')
+					image_name[name_len - 2] = '\0';
+				else if (image_name[name_len - 1] == '\n')
+					image_name[name_len - 1] = '\0';
 				strcat(image_path, image_name);
 				input = image_path;
 			}
