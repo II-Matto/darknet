@@ -9,11 +9,13 @@
 #include "opencv2/highgui/highgui_c.h"
 #endif
 
-char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+//char *voc_names[] = {"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+char *voc_names[] = {"frontal face", "profile face", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 
 void draw_yolo(image im, int num, float thresh, box *boxes, float **probs)
 {
-    int classes = 20;
+    //int classes = 20;
+    int classes = 2;
     int i;
 
     for(i = 0; i < num; ++i){
@@ -23,7 +25,8 @@ void draw_yolo(image im, int num, float thresh, box *boxes, float **probs)
             int width = pow(prob, 1./2.)*10+1;
             //width = 8;
             printf("%s: %.2f\n", voc_names[class], prob);
-            class = class * 7 % 20;
+            //class = class * 7 % 20;
+			class = class * 7 % 2;
             float red = get_color(0,class,classes);
             float green = get_color(1,class,classes);
             float blue = get_color(2,class,classes);
@@ -51,7 +54,7 @@ void train_yolo(char *cfgfile, char *weightfile, const char* model_dir)
     //char *backup_directory = "/home/pjreddie/backup/";
     char* train_images = "train_images.txt";
 	const char* backup_directory = model_dir;
-	printf("List of Training images: %s\n", train_images);
+	printf("\nList of Training images: %s\n", train_images);
 	printf("Model Directory: %s\n", backup_directory);
 
     srand(time(0));
@@ -346,7 +349,7 @@ void validate_yolo_recall(char *cfgfile, char *weightfile)
     }
 }
 
-void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
+void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh, char* image_dir, char* image_list, char* output_dir)
 {
 
     network net = parse_network_cfg(cfgfile);
@@ -364,36 +367,142 @@ void test_yolo(char *cfgfile, char *weightfile, char *filename, float thresh)
     box *boxes = calloc(l.side*l.side*l.n, sizeof(box));
     float **probs = calloc(l.side*l.side*l.n, sizeof(float *));
     for(j = 0; j < l.side*l.side*l.n; ++j) probs[j] = calloc(l.classes, sizeof(float *));
+
+	FILE* image_list_file = 0;
+	char image_path[1024];
+	char image_name[1024];
+	char output_name_predict[1024];
+	char output_name_resized[1024];
+	if (image_list != 0) {
+		image_list_file = fopen(image_list, "r");
+		if (image_list_file == 0)
+			printf("Fail to open image list file: %s\n", image_list);
+	}
+	int image_count = 0;
+
+	FILE* detect_file = 0;
+	char detect_path[1024];
+	strcpy(detect_path, "");
+	if (output_dir != 0) {
+		strcpy(detect_path, output_dir);
+		strcat(detect_path, "/");
+	}
+	strcat(detect_path, "detect.txt");
+	detect_file = fopen(detect_path, "w");
+	if (detect_file == 0)
+		printf("Fail to open detect file: %s\n", detect_path);
+
+	clock_t elapsed_time = 0;
+	clock_t end_time = 0;
+
     while(1){
         if(filename){
             strncpy(input, filename, 256);
         } else {
-            printf("Enter Image Path: ");
-            fflush(stdout);
-            input = fgets(input, 256, stdin);
-            if(!input) return;
-            strtok(input, "\n");
+        	if (image_list_file == 0) {
+	            printf("Enter Image Path: ");
+	            fflush(stdout);
+	            input = fgets(input, 256, stdin);
+	            if(!input) return;
+	            strtok(input, "\n");
+        	}
+			else {
+				strcpy(image_path, "");
+				if (image_dir != 0) {
+					strcpy(image_path, image_dir);
+					strcat(image_path, "/");
+				}
+				if (!fgets(image_name, 1023 - strlen(image_path), image_list_file))
+					break;
+				image_name[strlen(image_name) - 1] = '\0';
+				strcat(image_path, image_name);
+				input = image_path;
+			}
         }
         image im = load_image_color(input,0,0);
         image sized = resize_image(im, net.w, net.h);
         float *X = sized.data;
         time=clock();
         float *predictions = network_predict(net, X);
-        printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
+		//printf("%s: Predicted in %f seconds.\n", input, sec(clock()-time));
+		end_time = clock();
+		elapsed_time += (end_time - time);
+        printf("%s: Predicted in %f seconds.\n", input, sec(end_time - time));
+
         convert_yolo_detections(predictions, l.classes, l.n, l.sqrt, l.side, 1, 1, thresh, probs, boxes, 0);
         if (nms) do_nms_sort(boxes, probs, l.side*l.side*l.n, l.classes, nms);
         draw_yolo(im, l.side*l.side*l.n, thresh, boxes, probs);
-        show_image(im, "predictions");
 
-        show_image(sized, "resized");
+		strcpy(output_name_predict, "");
+		strcpy(output_name_resized, "");
+		image_count++;
+		if (output_dir != 0) {
+			strcpy(output_name_predict, output_dir);
+			strcat(output_name_predict, "/");
+
+			strcpy(output_name_resized, output_dir);
+			strcat(output_name_resized, "/");
+		}
+		snprintf(output_name_predict + strlen(output_name_predict), 12, "%d", image_count);
+		strcat(output_name_predict, "_detect");
+		snprintf(output_name_resized + strlen(output_name_resized), 12, "%d", image_count);
+		strcat(output_name_resized, "_resize");
+
+		save_image_jpg(im, output_name_predict);
+		//save_image_jpg(sized, output_name_resized);
+
+		if (detect_file != 0) {
+			fprintf(detect_file, "%s\n", input);
+			int ii;
+			int class_num = 2;
+			int object_count = 0;
+			for (ii = 0; ii < l.side * l.side * l.n; ii++) {
+				int class_idx = max_index(probs[ii], class_num);
+		        float score = probs[ii][class_idx];
+		        if(score > thresh)
+					object_count++;
+			}
+			fprintf(detect_file, "%d\n", object_count);
+			for (ii = 0; ii < l.side * l.side * l.n; ii++) {
+				int class_idx = max_index(probs[ii], class_num);
+		        float score = probs[ii][class_idx];
+		        if(score > thresh){
+		            box b = boxes[ii];
+
+		            int left  = (b.x-b.w/2.)*im.w;
+		            int right = (b.x+b.w/2.)*im.w;
+		            int top   = (b.y-b.h/2.)*im.h;
+		            int bot   = (b.y+b.h/2.)*im.h;
+
+		            if(left < 0) left = 0;
+		            if(right > im.w-1) right = im.w-1;
+		            if(top < 0) top = 0;
+		            if(bot > im.h-1) bot = im.h-1;
+
+		            fprintf(detect_file, "%d %d %d %d %f\n", left, top,
+						right - left + 1, bot - top + 1, score);
+		        }
+			}
+		}
+
+        //show_image(im, "predictions");
+
+        //show_image(sized, "resized");
         free_image(im);
         free_image(sized);
 #ifdef OPENCV
-        cvWaitKey(0);
-        cvDestroyAllWindows();
+        //cvWaitKey(0);
+        //cvDestroyAllWindows();
 #endif
         if (filename) break;
     }
+
+	printf("Elapsed time: %d images %f s (%f fps).\n", image_count, sec(elapsed_time),
+		image_count / sec(elapsed_time));
+	if (image_list_file != 0)
+		fclose(image_list_file);
+	if (detect_file != 0)
+		fclose(detect_file);
 }
 
 /*
@@ -440,6 +549,9 @@ void demo_yolo(char *cfgfile, char *weightfile, float thresh){}
 void run_yolo(int argc, char **argv)
 {
     float thresh = find_float_arg(argc, argv, "-thresh", .2);
+	char* image_dir = find_char_arg(argc, argv, "-imageDir", 0);
+	char* image_list = find_char_arg(argc, argv, "-imageList", 0);
+	char* output_dir = find_char_arg(argc, argv, "-outputDir", 0);
 	fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [model directory (use NONE if not train)] [weights (optional)]\n", argv[0], argv[1]);
     if(argc < 5){
         fprintf(stderr, "usage: %s %s [train/test/valid] [cfg] [model directory] [weights (optional)]\n", argv[0], argv[1]);
@@ -449,8 +561,9 @@ void run_yolo(int argc, char **argv)
     char *cfg = argv[3];
 	char* model_dir = argv[4];
     char *weights = (argc > 5) ? argv[5] : 0;
-    char *filename = (argc > 6) ? argv[6]: 0;
-    if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh);
+    //char *filename = (argc > 6) ? argv[6]: 0;
+    char *filename = (argc > 6 && image_dir == 0 && image_list == 0) ? argv[6]: 0;
+    if(0==strcmp(argv[2], "test")) test_yolo(cfg, weights, filename, thresh, image_dir, image_list, output_dir);
     else if(0==strcmp(argv[2], "train")) train_yolo(cfg, weights, model_dir);
     else if(0==strcmp(argv[2], "valid")) validate_yolo(cfg, weights);
     else if(0==strcmp(argv[2], "recall")) validate_yolo_recall(cfg, weights);
